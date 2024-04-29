@@ -13,9 +13,23 @@ env:
   APP_IMAGE: ghcr.io/${{ github.repository }}/${{ github.ref_name }}/app
 
 jobs:
+  docker-metadata:
+    name: Docker metadata
+    runs-on: ubuntu-latest
+    outputs:
+      data: ${{ steps.meta.outputs }}
+    steps:
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.APP_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}},prefix=build-,value=${{ github.run_number }}
   build-builder:
     name: Docker build reusable builder container
     runs-on: ubuntu-latest
+    needs: docker-metadata
     permissions:
       contents: read
       packages: write
@@ -26,6 +40,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Test step
+        run: |
+          echo "${{ needs.docker-metadata.outputs.data }}"
 
       # Login against a Docker registry except on PR
       - name: Log into container registry ${{ env.REGISTRY }}
@@ -50,7 +68,9 @@ jobs:
   build-app:
     name: Docker build latest app code
     runs-on: ubuntu-latest
-    needs: build-builder
+    needs:
+      - build-builder
+      - docker-metadata
 
     permissions:
       contents: read
@@ -62,6 +82,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Test step
+        run: |
+          echo "${{ needs.docker-metadata.outputs.data }}"
 
       # Login against a Docker registry except on PR
       - name: Log into container registry ${{ env.REGISTRY }}
@@ -87,12 +111,12 @@ jobs:
           docker push --all-tags ${{ env.APP_IMAGE }}
           echo "image-uri=$BUILD_IMAGE" >> $GITHUB_OUTPUT
 
-  push-app-block:
-    name: Push Contensis block
-    needs: build-app
-    uses: ./.github/workflows/push-block.yml
-    secrets: inherit
-    with:
-      block-id: leif-website
-      image-uri: ${{ needs.build-app.outputs.image-uri }}
-      tag-repo: true
+#  push-app-block:
+#    name: Push Contensis block
+#    needs: build-app
+#    uses: ./.github/workflows/push-block.yml
+#    secrets: inherit
+#    with:
+#      block-id: leif-website
+#      image-uri: ${{ needs.build-app.outputs.image-uri }}
+#      tag-repo: true
