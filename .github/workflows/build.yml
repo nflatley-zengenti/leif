@@ -17,15 +17,15 @@ jobs:
     name: Docker metadata
     runs-on: ubuntu-latest
     outputs:
-      data: ${{ steps.meta.outputs }}
+      json: ${{ steps.meta.outputs.json }}
     steps:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.APP_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}},prefix=build-,value=${{ github.run_number }}
+          tags: type=raw,value=build-${{ github.run_number }}
+          flavor: latest=true
   build-builder:
     name: Docker build reusable builder container
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
 
       - name: Test step
         run: |
-          echo "${{ needs.docker-metadata.outputs.data }}"
+          echo "${{ needs.docker-metadata.outputs.json }}"
 
       # Login against a Docker registry except on PR
       - name: Log into container registry ${{ env.REGISTRY }}
@@ -85,7 +85,7 @@ jobs:
 
       - name: Test step
         run: |
-          echo "${{ needs.docker-metadata.outputs.data }}"
+          echo "${{ needs.docker-metadata.outputs.json }}"
 
       # Login against a Docker registry except on PR
       - name: Log into container registry ${{ env.REGISTRY }}
